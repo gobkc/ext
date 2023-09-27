@@ -72,7 +72,6 @@ func (server *GinServer) PUT(relativePath string, handlers ...func(c *Gtx)) gin.
 	}
 	return server.Engine.PUT(relativePath, RHandles...)
 }
-
 func (server *GinServer) DELETE(relativePath string, handlers ...func(c *Gtx)) gin.IRoutes {
 	RHandles := make([]gin.HandlerFunc, 0)
 	for _, handle := range handlers {
