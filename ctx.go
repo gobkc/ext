@@ -27,119 +27,89 @@ func NewGinServer() *GinServer {
 	return gServer
 }
 
-func handleFunc(handler func(c *Gtx)) func(ctx *gin.Context) {
-	return func(c *gin.Context) {
-		handler(&Gtx{Context: c})
+func (server *GinServer) handleFunctions(method, path string, handlers ...func(c *Gtx)) gin.IRoutes {
+	functions := make([]gin.HandlerFunc, len(handlers))
+	for _, handler := range handlers {
+		functions = append(functions, func(c *gin.Context) {
+			handler(&Gtx{Context: c})
+		})
 	}
+	return server.Engine.Handle(method, path, functions...)
+}
+
+func (server *GinServer) GET(relativePath string, handlers ...func(c *Gtx)) gin.IRoutes {
+	return server.handleFunctions(http.MethodGet, relativePath, handlers...)
+}
+
+func (server *GinServer) POST(relativePath string, handlers ...func(c *Gtx)) gin.IRoutes {
+	return server.handleFunctions(http.MethodPost, relativePath, handlers...)
+}
+
+func (server *GinServer) PATCH(relativePath string, handlers ...func(c *Gtx)) gin.IRoutes {
+	return server.handleFunctions(http.MethodPatch, relativePath, handlers...)
+}
+
+func (server *GinServer) PUT(relativePath string, handlers ...func(c *Gtx)) gin.IRoutes {
+	return server.handleFunctions(http.MethodPut, relativePath, handlers...)
+}
+func (server *GinServer) DELETE(relativePath string, handlers ...func(c *Gtx)) gin.IRoutes {
+	return server.handleFunctions(http.MethodDelete, relativePath, handlers...)
+}
+
+func (server *GinServer) HEAD(relativePath string, handlers ...func(c *Gtx)) gin.IRoutes {
+	return server.handleFunctions(http.MethodHead, relativePath, handlers...)
 }
 
 func (server *GinServer) Group(relativePath string, handlers ...func(c *Gtx)) *GinGroup {
 	RHandles := make([]gin.HandlerFunc, 0)
 	for _, handle := range handlers {
-		RHandles = append(RHandles, handleFunc(handle))
+		RHandles = append(RHandles, func(c *gin.Context) {
+			handle(&Gtx{Context: c})
+		})
 	}
 	return &GinGroup{server.Engine.Group(relativePath, RHandles...)}
 }
 
-func (server *GinServer) GET(relativePath string, handlers ...func(c *Gtx)) gin.IRoutes {
-	RHandles := make([]gin.HandlerFunc, 0)
-	for _, handle := range handlers {
-		RHandles = append(RHandles, handleFunc(handle))
+func (r *GinGroup) handleGroups(method, path string, handlers ...func(c *Gtx)) gin.IRoutes {
+	functions := make([]gin.HandlerFunc, len(handlers))
+	for _, handler := range handlers {
+		functions = append(functions, func(c *gin.Context) {
+			handler(&Gtx{Context: c})
+		})
 	}
-	return server.Engine.GET(relativePath, RHandles...)
-}
-
-func (server *GinServer) POST(relativePath string, handlers ...func(c *Gtx)) gin.IRoutes {
-	RHandles := make([]gin.HandlerFunc, 0)
-	for _, handle := range handlers {
-		RHandles = append(RHandles, handleFunc(handle))
-	}
-	return server.Engine.POST(relativePath, RHandles...)
-}
-
-func (server *GinServer) PATCH(relativePath string, handlers ...func(c *Gtx)) gin.IRoutes {
-	RHandles := make([]gin.HandlerFunc, 0)
-	for _, handle := range handlers {
-		RHandles = append(RHandles, handleFunc(handle))
-	}
-	return server.Engine.PATCH(relativePath, RHandles...)
-}
-
-func (server *GinServer) PUT(relativePath string, handlers ...func(c *Gtx)) gin.IRoutes {
-	RHandles := make([]gin.HandlerFunc, 0)
-	for _, handle := range handlers {
-		RHandles = append(RHandles, handleFunc(handle))
-	}
-	return server.Engine.PUT(relativePath, RHandles...)
-}
-func (server *GinServer) DELETE(relativePath string, handlers ...func(c *Gtx)) gin.IRoutes {
-	RHandles := make([]gin.HandlerFunc, 0)
-	for _, handle := range handlers {
-		RHandles = append(RHandles, handleFunc(handle))
-	}
-	return server.Engine.DELETE(relativePath, RHandles...)
-}
-
-func (server *GinServer) HEAD(relativePath string, handlers ...func(c *Gtx)) gin.IRoutes {
-	RHandles := make([]gin.HandlerFunc, 0)
-	for _, handle := range handlers {
-		RHandles = append(RHandles, handleFunc(handle))
-	}
-	return server.Engine.HEAD(relativePath, RHandles...)
+	return r.RouterGroup.Handle(method, path, functions...)
 }
 
 func (r *GinGroup) GET(relativePath string, handlers ...func(c *Gtx)) gin.IRoutes {
-	rHandles := make([]gin.HandlerFunc, 0)
-	for _, handle := range handlers {
-		rHandles = append(rHandles, handleFunc(handle))
-	}
-	return r.RouterGroup.GET(relativePath, rHandles...)
+	return r.handleGroups(http.MethodGet, relativePath, handlers...)
 }
 
 func (r *GinGroup) POST(relativePath string, handlers ...func(c *Gtx)) gin.IRoutes {
-	rHandles := make([]gin.HandlerFunc, 0)
-	for _, handle := range handlers {
-		rHandles = append(rHandles, handleFunc(handle))
-	}
-	return r.RouterGroup.POST(relativePath, rHandles...)
+	return r.handleGroups(http.MethodPost, relativePath, handlers...)
 }
 
 func (r *GinGroup) PUT(relativePath string, handlers ...func(c *Gtx)) gin.IRoutes {
-	rHandles := make([]gin.HandlerFunc, 0)
-	for _, handle := range handlers {
-		rHandles = append(rHandles, handleFunc(handle))
-	}
-	return r.RouterGroup.PUT(relativePath, rHandles...)
+	return r.handleGroups(http.MethodPut, relativePath, handlers...)
 }
 
 func (r *GinGroup) PATCH(relativePath string, handlers ...func(c *Gtx)) gin.IRoutes {
-	rHandles := make([]gin.HandlerFunc, 0)
-	for _, handle := range handlers {
-		rHandles = append(rHandles, handleFunc(handle))
-	}
-	return r.RouterGroup.PATCH(relativePath, rHandles...)
+	return r.handleGroups(http.MethodPatch, relativePath, handlers...)
 }
 
 func (r *GinGroup) DELETE(relativePath string, handlers ...func(c *Gtx)) gin.IRoutes {
-	rHandles := make([]gin.HandlerFunc, 0)
-	for _, handle := range handlers {
-		rHandles = append(rHandles, handleFunc(handle))
-	}
-	return r.RouterGroup.DELETE(relativePath, rHandles...)
+	return r.handleGroups(http.MethodDelete, relativePath, handlers...)
 }
 
 func (r *GinGroup) HEAD(relativePath string, handlers ...func(c *Gtx)) gin.IRoutes {
-	rHandles := make([]gin.HandlerFunc, 0)
-	for _, handle := range handlers {
-		rHandles = append(rHandles, handleFunc(handle))
-	}
-	return r.RouterGroup.HEAD(relativePath, rHandles...)
+	return r.handleGroups(http.MethodHead, relativePath, handlers...)
 }
 
 func (r *GinGroup) Use(middlewares ...func(c *Gtx)) gin.IRoutes {
 	rMiddlewares := make([]gin.HandlerFunc, 0)
 	for _, middleware := range middlewares {
-		rMiddlewares = append(rMiddlewares, handleFunc(middleware))
+		rMiddlewares = append(rMiddlewares, func(c *gin.Context) {
+			middleware(&Gtx{Context: c})
+		})
 	}
 	return r.RouterGroup.Use(rMiddlewares...)
 }
