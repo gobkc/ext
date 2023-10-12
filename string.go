@@ -149,3 +149,8 @@ func Md5(str string) string {
 	md5str := fmt.Sprintf("%x", w.Sum(nil))
 	return md5str
 }
+
+func FormatJson(dest any) string {
+	jsonByte, _ := json.MarshalIndent(dest, "", "\t")
+	return string(jsonByte)
+}
