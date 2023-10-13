@@ -1,164 +1,220 @@
 package gext
 
 import (
+	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"log/slog"
 	"net/http"
+	"os"
+	"os/signal"
+	"sync"
+	"syscall"
 )
 
-type GinServer struct {
-	*gin.Engine
-}
-
-type Gtx struct {
+type Context struct {
 	*gin.Context
-	ID int
+	handlerPFFunc    *func(*Context) any
+	handlerOtherFunc *func(*Context, uint) any
 }
 
-type GinGroup struct {
-	*gin.RouterGroup
+type HandlerFunc func(*Context)
+
+type Server struct {
+	engine           *gin.Engine
+	handlerPFFunc    *func(*Context) any
+	handlerOtherFunc *func(*Context, uint) any
+	mid
 }
 
-func NewGinServer() *GinServer {
-	gServer := &GinServer{Engine: gin.Default()}
-	gServer.Engine.GET(`/ping`, Cors(), func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{`msg`: `pong`})
-	})
-	return gServer
+func NewServer() *Server {
+	s := &Server{engine: gin.New()}
+	s.mid.s = s
+	return s
 }
 
-func (server *GinServer) handleFunctions(method, path string, handlers ...func(c *Gtx)) gin.IRoutes {
-	functions := make([]gin.HandlerFunc, len(handlers))
-	for _, handler := range handlers {
-		functions = append(functions, func(c *gin.Context) {
-			handler(&Gtx{Context: c})
-		})
+func (s *Server) GET(path string, handlers ...HandlerFunc) {
+	s.engine.GET(path, s.convertHandler(handlers...))
+}
+
+func (s *Server) POST(path string, handlers ...HandlerFunc) {
+	s.engine.POST(path, s.convertHandler(handlers...))
+}
+
+func (s *Server) PUT(path string, handlers ...HandlerFunc) {
+	s.engine.PUT(path, s.convertHandler(handlers...))
+}
+
+func (s *Server) PATCH(path string, handlers ...HandlerFunc) {
+	s.engine.PATCH(path, s.convertHandler(handlers...))
+}
+
+func (s *Server) HEAD(path string, handlers ...HandlerFunc) {
+	s.engine.HEAD(path, s.convertHandler(handlers...))
+}
+
+func (s *Server) DELETE(path string, handlers ...HandlerFunc) {
+	s.engine.DELETE(path, s.convertHandler(handlers...))
+}
+
+func (s *Server) OPTIONS(path string, handlers ...HandlerFunc) {
+	s.engine.OPTIONS(path, s.convertHandler(handlers...))
+}
+
+func (s *Server) GROUP(path string, handlers ...HandlerFunc) *Group {
+	g := s.engine.Group(path, s.convertHandler(handlers...))
+	ng := NewGroup(g)
+	ng.handlerPFFunc = s.handlerPFFunc
+	ng.handlerOtherFunc = s.handlerOtherFunc
+	ng.mid = s.mid
+	ng.mid.g.handlerPFFunc = s.handlerPFFunc
+	ng.mid.g.handlerOtherFunc = s.handlerOtherFunc
+	return ng
+}
+
+type Group struct {
+	group            *gin.RouterGroup
+	handlerPFFunc    *func(*Context) any
+	handlerOtherFunc *func(*Context, uint) any
+	mid
+}
+
+func NewGroup(group *gin.RouterGroup) *Group {
+	return &Group{group: group}
+}
+
+func (g *Group) GET(path string, handlers ...HandlerFunc) {
+	g.group.GET(path, g.convertHandler(handlers...))
+}
+
+func (g *Group) POST(path string, handlers ...HandlerFunc) {
+	g.group.POST(path, g.convertHandler(handlers...))
+}
+
+func (g *Group) PUT(path string, handlers ...HandlerFunc) {
+	g.group.PUT(path, g.convertHandler(handlers...))
+}
+
+func (g *Group) PATCH(path string, handlers ...HandlerFunc) {
+	g.group.PATCH(path, g.convertHandler(handlers...))
+}
+
+func (g *Group) HEAD(path string, handlers ...HandlerFunc) {
+	g.group.HEAD(path, g.convertHandler(handlers...))
+}
+
+func (g *Group) DELETE(path string, handlers ...HandlerFunc) {
+	g.group.DELETE(path, g.convertHandler(handlers...))
+}
+
+func (g *Group) OPTIONS(path string, handlers ...HandlerFunc) {
+	g.group.OPTIONS(path, g.convertHandler(handlers...))
+}
+
+func (g *Group) GROUP(path string, handlers ...HandlerFunc) *Group {
+	og := g.group.Group(path, g.convertHandler(handlers...))
+	ng := NewGroup(og)
+	ng.handlerPFFunc = g.handlerPFFunc
+	ng.handlerOtherFunc = g.handlerOtherFunc
+	return ng
+}
+
+func (s *Server) SetGroupRouters(name string, router func(g *Group), handlers ...HandlerFunc) {
+	rs := s.GROUP(name, handlers...)
+	router(rs)
+}
+
+func (s *Server) SetPublicRouters(router func(s *Server)) {
+	router(s)
+}
+
+func (s *Server) RUN(addr string) {
+	signals := make(chan os.Signal)
+	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+	s.engine.Run(addr)
+	sign := <-signals
+	slog.Default().Warn(`Stopping HTTP RESTFul Server`, slog.String(`Signal`, sign.String()))
+}
+
+var pfOnce sync.Once
+
+func (s *Server) SetHandlerProfileFunc(handlerPFFunc func(*Context) any) {
+	*s.handlerPFFunc = handlerPFFunc
+}
+
+func (s *Server) SetHandlerContextValueFunc(handlerContextValueFunc func(*Context, uint) any) {
+	*s.handlerOtherFunc = handlerContextValueFunc
+}
+
+type mid struct {
+	s *Server
+	g *Group
+}
+
+func (m *mid) convertHandler(fs ...HandlerFunc) gin.HandlerFunc {
+	return func(context *gin.Context) {
+		c := &Context{
+			Context:          context,
+			handlerPFFunc:    m.s.handlerPFFunc,
+			handlerOtherFunc: m.s.handlerOtherFunc,
+		}
+		for _, f := range fs {
+			if c.IsAborted() {
+				return
+			}
+			f(c)
+		}
 	}
-	return server.Engine.Handle(method, path, functions...)
 }
 
-func (server *GinServer) LoadRouters(routers ...func(*gin.Engine)) {
-	for _, router := range routers {
-		router(server.Engine)
-	}
-}
-
-func (server *GinServer) GET(relativePath string, handlers ...func(c *Gtx)) gin.IRoutes {
-	return server.handleFunctions(http.MethodGet, relativePath, handlers...)
-}
-
-func (server *GinServer) POST(relativePath string, handlers ...func(c *Gtx)) gin.IRoutes {
-	return server.handleFunctions(http.MethodPost, relativePath, handlers...)
-}
-
-func (server *GinServer) PATCH(relativePath string, handlers ...func(c *Gtx)) gin.IRoutes {
-	return server.handleFunctions(http.MethodPatch, relativePath, handlers...)
-}
-
-func (server *GinServer) PUT(relativePath string, handlers ...func(c *Gtx)) gin.IRoutes {
-	return server.handleFunctions(http.MethodPut, relativePath, handlers...)
-}
-func (server *GinServer) DELETE(relativePath string, handlers ...func(c *Gtx)) gin.IRoutes {
-	return server.handleFunctions(http.MethodDelete, relativePath, handlers...)
-}
-
-func (server *GinServer) HEAD(relativePath string, handlers ...func(c *Gtx)) gin.IRoutes {
-	return server.handleFunctions(http.MethodHead, relativePath, handlers...)
-}
-
-func (server *GinServer) Group(relativePath string, handlers ...func(c *Gtx)) *GinGroup {
-	RHandles := make([]gin.HandlerFunc, 0)
-	for _, handle := range handlers {
-		RHandles = append(RHandles, func(c *gin.Context) {
-			handle(&Gtx{Context: c})
-		})
-	}
-	return &GinGroup{server.Engine.Group(relativePath, RHandles...)}
-}
-
-func (r *GinGroup) handleGroups(method, path string, handlers ...func(c *Gtx)) gin.IRoutes {
-	functions := make([]gin.HandlerFunc, len(handlers))
-	for _, handler := range handlers {
-		functions = append(functions, func(c *gin.Context) {
-			handler(&Gtx{Context: c})
-		})
-	}
-	return r.RouterGroup.Handle(method, path, functions...)
-}
-
-func (r *GinGroup) GET(relativePath string, handlers ...func(c *Gtx)) gin.IRoutes {
-	return r.handleGroups(http.MethodGet, relativePath, handlers...)
-}
-
-func (r *GinGroup) POST(relativePath string, handlers ...func(c *Gtx)) gin.IRoutes {
-	return r.handleGroups(http.MethodPost, relativePath, handlers...)
-}
-
-func (r *GinGroup) PUT(relativePath string, handlers ...func(c *Gtx)) gin.IRoutes {
-	return r.handleGroups(http.MethodPut, relativePath, handlers...)
-}
-
-func (r *GinGroup) PATCH(relativePath string, handlers ...func(c *Gtx)) gin.IRoutes {
-	return r.handleGroups(http.MethodPatch, relativePath, handlers...)
-}
-
-func (r *GinGroup) DELETE(relativePath string, handlers ...func(c *Gtx)) gin.IRoutes {
-	return r.handleGroups(http.MethodDelete, relativePath, handlers...)
-}
-
-func (r *GinGroup) HEAD(relativePath string, handlers ...func(c *Gtx)) gin.IRoutes {
-	return r.handleGroups(http.MethodHead, relativePath, handlers...)
-}
-
-func (r *GinGroup) Use(middlewares ...func(c *Gtx)) *GinGroup {
-	rMiddlewares := make([]gin.HandlerFunc, 0)
-	for _, middleware := range middlewares {
-		rMiddlewares = append(rMiddlewares, func(c *gin.Context) {
-			middleware(&Gtx{Context: c})
-		})
-	}
-	r.RouterGroup.Use(rMiddlewares...)
-	return r
-}
-
-func (g *Gtx) JSON(data any) {
-	if g.Request == nil {
+func (c *Context) JSON(data any) {
+	if c.Request == nil {
 		return
 	}
 	mb, _ := MarshalGzipJson(data)
-	g.Writer.Header().Set("Content-Type", "application/json")
-	g.Writer.Header().Set("Content-Encoding", "gzip")
-	g.Writer.Header().Set("Vary", "Accept-Encoding")
-	g.Writer.Header().Set("Content-Length", fmt.Sprintf("%v", len(mb)))
-	g.Writer.Write(mb)
-	g.Writer.WriteHeader(http.StatusOK)
-	g.Writer.Status()
+	c.Writer.Header().Set("Content-Type", "application/json")
+	c.Writer.Header().Set("Content-Encoding", "gzip")
+	c.Writer.Header().Set("Vary", "Accept-Encoding")
+	c.Writer.Header().Set("Content-Length", fmt.Sprintf("%v", len(mb)))
+	c.Writer.Write(mb)
+	c.Writer.WriteHeader(http.StatusOK)
+	c.Writer.Status()
 }
 
-func (g *Gtx) JSONWithHTTPCode(httpCode int, data any) {
-	if g.Request == nil {
-		return
-	}
-	mb, _ := MarshalGzipJson(data)
-	g.Writer.Header().Set("Content-Type", "application/json")
-	g.Writer.Header().Set("Content-Encoding", "gzip")
-	g.Writer.Header().Set("Vary", "Accept-Encoding")
-	g.Writer.Header().Set("Content-Length", fmt.Sprintf("%v", len(mb)))
-	g.Writer.Write(mb)
-	g.Writer.WriteHeader(httpCode)
-	g.Writer.Status()
+func (c *Context) JSONWithHTTPCode(httpCode int, data any) {
+	c.JSON(data)
+	c.Writer.WriteHeader(httpCode)
+	c.Writer.Status()
 }
 
-type UserInfoKey struct{}
+type PaginationParameters struct {
+	Limit   int64  `json:"limit"`
+	Offset  int64  `json:"offset"`
+	Keyword string `json:"keyword"`
+}
 
-var UserInfoKeyVal = UserInfoKey{}
-
-func GetProfile[U any](c *Gtx) (userInfo *U) {
-	userInfo = new(U)
-	profile := c.Request.Context().Value(UserInfoKeyVal)
-	query, ok := profile.(U)
-	if ok {
-		userInfo = &query
+func (c *Context) GetPaginationParameters() *PaginationParameters {
+	return &PaginationParameters{
+		Limit:   to.Int[int64](c.DefaultQuery(`limit`, `10`)),
+		Offset:  to.Int[int64](c.DefaultQuery(`offset`, `0`)),
+		Keyword: c.Query(`keyword`),
 	}
-	return
+}
+
+var GetUserProfileErrParamErr = errors.New(`parameter is not a pointer`)
+
+func (c *Context) GetUserProfile() any {
+	if c.handlerPFFunc == nil {
+		return nil
+	}
+	data := (*c.handlerPFFunc)(c)
+	return data
+}
+
+func (c *Context) GetContextWithKey(key uint) any {
+	if c.handlerPFFunc == nil {
+		return nil
+	}
+	data := (*c.handlerOtherFunc)(c, key)
+	return data
 }
