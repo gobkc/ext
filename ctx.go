@@ -37,6 +37,12 @@ func (server *GinServer) handleFunctions(method, path string, handlers ...func(c
 	return server.Engine.Handle(method, path, functions...)
 }
 
+func (server *GinServer) LoadRouters(routers ...func(*gin.Engine)) {
+	for _, router := range routers {
+		router(server.Engine)
+	}
+}
+
 func (server *GinServer) GET(relativePath string, handlers ...func(c *Gtx)) gin.IRoutes {
 	return server.handleFunctions(http.MethodGet, relativePath, handlers...)
 }
@@ -104,14 +110,15 @@ func (r *GinGroup) HEAD(relativePath string, handlers ...func(c *Gtx)) gin.IRout
 	return r.handleGroups(http.MethodHead, relativePath, handlers...)
 }
 
-func (r *GinGroup) Use(middlewares ...func(c *Gtx)) gin.IRoutes {
+func (r *GinGroup) Use(middlewares ...func(c *Gtx)) *GinGroup {
 	rMiddlewares := make([]gin.HandlerFunc, 0)
 	for _, middleware := range middlewares {
 		rMiddlewares = append(rMiddlewares, func(c *gin.Context) {
 			middleware(&Gtx{Context: c})
 		})
 	}
-	return r.RouterGroup.Use(rMiddlewares...)
+	r.RouterGroup.Use(rMiddlewares...)
+	return r
 }
 
 func (g *Gtx) JSON(data any) {
