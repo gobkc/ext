@@ -2,7 +2,10 @@ module github.com/gobkc/gin-ext
 
 go 1.19
 
-require github.com/gin-gonic/gin v1.9.1
+require (
+	github.com/gin-gonic/gin v1.9.1
+	github.com/gobkc/to v0.0.4
+)
 
 require (
 	github.com/bytedance/sonic v1.9.1 // indirect
