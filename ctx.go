@@ -68,6 +68,7 @@ func (s *Server) GROUP(path string, handlers ...HandlerFunc) *Group {
 	ng.handlerPFFunc = s.handlerPFFunc
 	ng.handlerOtherFunc = s.handlerOtherFunc
 	ng.mid = s.mid
+	ng.mid.g = ng
 	ng.mid.g.handlerPFFunc = s.handlerPFFunc
 	ng.mid.g.handlerOtherFunc = s.handlerOtherFunc
 	return ng
