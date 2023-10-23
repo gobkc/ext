@@ -10,11 +10,13 @@ You can commit PR to this repository
 
 ### How to get it?
 ````
-go get -u github.com/gobkc/gin-ext
+go get -u github.com/gobkc/ext
 ````
 
 ### Quick start
 ````
+	g := ext.NewServer()
+	g.RUN(`:8080`)
 ````
 
 ### License

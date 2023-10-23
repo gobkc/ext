@@ -1,4 +1,4 @@
-module github.com/gobkc/gin-ext
+module github.com/gobkc/ext
 
 go 1.19
 

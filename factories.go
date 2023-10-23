@@ -1,4 +1,4 @@
-package gext
+package ext
 
 type Configurator interface {
 	UnMarshal(path string, dest any) error

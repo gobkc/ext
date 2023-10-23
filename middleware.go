@@ -1,4 +1,4 @@
-package gext
+package ext
 
 import (
 	"github.com/gin-gonic/gin"
