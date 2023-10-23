@@ -141,11 +141,11 @@ func (s *Server) RUN(addr string) {
 var pfOnce sync.Once
 
 func (s *Server) SetHandlerProfileFunc(handlerPFFunc func(*Context) any) {
-	*s.handlerPFFunc = handlerPFFunc
+	s.handlerPFFunc = &handlerPFFunc
 }
 
 func (s *Server) SetHandlerContextValueFunc(handlerContextValueFunc func(*Context, uint) any) {
-	*s.handlerOtherFunc = handlerContextValueFunc
+	s.handlerOtherFunc = &handlerContextValueFunc
 }
 
 type mid struct {
