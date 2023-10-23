@@ -35,35 +35,35 @@ func NewServer() *Server {
 }
 
 func (s *Server) GET(path string, handlers ...HandlerFunc) {
-	s.engine.GET(path, s.convertHandler(handlers...))
+	s.engine.GET(path, s.ConvertHandler(handlers...))
 }
 
 func (s *Server) POST(path string, handlers ...HandlerFunc) {
-	s.engine.POST(path, s.convertHandler(handlers...))
+	s.engine.POST(path, s.ConvertHandler(handlers...))
 }
 
 func (s *Server) PUT(path string, handlers ...HandlerFunc) {
-	s.engine.PUT(path, s.convertHandler(handlers...))
+	s.engine.PUT(path, s.ConvertHandler(handlers...))
 }
 
 func (s *Server) PATCH(path string, handlers ...HandlerFunc) {
-	s.engine.PATCH(path, s.convertHandler(handlers...))
+	s.engine.PATCH(path, s.ConvertHandler(handlers...))
 }
 
 func (s *Server) HEAD(path string, handlers ...HandlerFunc) {
-	s.engine.HEAD(path, s.convertHandler(handlers...))
+	s.engine.HEAD(path, s.ConvertHandler(handlers...))
 }
 
 func (s *Server) DELETE(path string, handlers ...HandlerFunc) {
-	s.engine.DELETE(path, s.convertHandler(handlers...))
+	s.engine.DELETE(path, s.ConvertHandler(handlers...))
 }
 
 func (s *Server) OPTIONS(path string, handlers ...HandlerFunc) {
-	s.engine.OPTIONS(path, s.convertHandler(handlers...))
+	s.engine.OPTIONS(path, s.ConvertHandler(handlers...))
 }
 
 func (s *Server) GROUP(path string, handlers ...HandlerFunc) *Group {
-	g := s.engine.Group(path, s.convertHandler(handlers...))
+	g := s.engine.Group(path, s.ConvertHandler(handlers...))
 	ng := NewGroup(g)
 	ng.handlerPFFunc = s.handlerPFFunc
 	ng.handlerOtherFunc = s.handlerOtherFunc
@@ -86,35 +86,35 @@ func NewGroup(group *gin.RouterGroup) *Group {
 }
 
 func (g *Group) GET(path string, handlers ...HandlerFunc) {
-	g.group.GET(path, g.convertHandler(handlers...))
+	g.group.GET(path, g.ConvertHandler(handlers...))
 }
 
 func (g *Group) POST(path string, handlers ...HandlerFunc) {
-	g.group.POST(path, g.convertHandler(handlers...))
+	g.group.POST(path, g.ConvertHandler(handlers...))
 }
 
 func (g *Group) PUT(path string, handlers ...HandlerFunc) {
-	g.group.PUT(path, g.convertHandler(handlers...))
+	g.group.PUT(path, g.ConvertHandler(handlers...))
 }
 
 func (g *Group) PATCH(path string, handlers ...HandlerFunc) {
-	g.group.PATCH(path, g.convertHandler(handlers...))
+	g.group.PATCH(path, g.ConvertHandler(handlers...))
 }
 
 func (g *Group) HEAD(path string, handlers ...HandlerFunc) {
-	g.group.HEAD(path, g.convertHandler(handlers...))
+	g.group.HEAD(path, g.ConvertHandler(handlers...))
 }
 
 func (g *Group) DELETE(path string, handlers ...HandlerFunc) {
-	g.group.DELETE(path, g.convertHandler(handlers...))
+	g.group.DELETE(path, g.ConvertHandler(handlers...))
 }
 
 func (g *Group) OPTIONS(path string, handlers ...HandlerFunc) {
-	g.group.OPTIONS(path, g.convertHandler(handlers...))
+	g.group.OPTIONS(path, g.ConvertHandler(handlers...))
 }
 
 func (g *Group) GROUP(path string, handlers ...HandlerFunc) *Group {
-	og := g.group.Group(path, g.convertHandler(handlers...))
+	og := g.group.Group(path, g.ConvertHandler(handlers...))
 	ng := NewGroup(og)
 	ng.handlerPFFunc = g.handlerPFFunc
 	ng.handlerOtherFunc = g.handlerOtherFunc
@@ -153,7 +153,7 @@ type mid struct {
 	g *Group
 }
 
-func (m *mid) convertHandler(fs ...HandlerFunc) gin.HandlerFunc {
+func (m *mid) ConvertHandler(fs ...HandlerFunc) gin.HandlerFunc {
 	return func(context *gin.Context) {
 		c := &Context{
 			Context:          context,
