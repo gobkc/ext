@@ -220,3 +220,9 @@ func (c *Context) GetContextWithKey(key uint) any {
 	data := (*c.handlerOtherFunc)(c, key)
 	return data
 }
+
+func GetObject[T any](ctx *Context, key uint) T {
+	data := ctx.GetContextWithKey(key)
+	s, _ := data.(T)
+	return s
+}
