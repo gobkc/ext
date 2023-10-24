@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/gobkc/to"
+	swaggerfiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 	"log/slog"
 	"net/http"
 	"os"
@@ -146,6 +148,10 @@ func (s *Server) SetHandlerProfileFunc(handlerPFFunc func(*Context) any) {
 
 func (s *Server) SetHandlerContextValueFunc(handlerContextValueFunc func(*Context, uint) any) {
 	s.handlerOtherFunc = &handlerContextValueFunc
+}
+
+func (s *Server) SetDocRouter(path string) {
+	s.engine.Any(path+`/*any`, ginSwagger.WrapHandler(swaggerfiles.Handler))
 }
 
 type mid struct {
