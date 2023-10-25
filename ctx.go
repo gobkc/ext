@@ -150,8 +150,13 @@ func (s *Server) SetHandlerContextValueFunc(handlerContextValueFunc func(*Contex
 	s.handlerOtherFunc = &handlerContextValueFunc
 }
 
-func (s *Server) SetDocRouter(path string) {
-	s.engine.Any(path+`/*any`, ginSwagger.WrapHandler(swaggerfiles.Handler))
+func (s *Server) SetDocRouter(path string, accounts ...gin.Accounts) {
+	s.engine.Static(path+`/`, path+`/index.html`)
+	account := gin.Accounts{}
+	if len(accounts) > 0 {
+		account = accounts[0]
+	}
+	s.engine.Any(path+`/*any`, gin.BasicAuth(account), ginSwagger.WrapHandler(swaggerfiles.Handler))
 }
 
 type mid struct {
